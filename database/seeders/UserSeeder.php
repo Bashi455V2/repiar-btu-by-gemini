@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\User;
+use App\Models\User; // <--- Import User Model
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
@@ -14,42 +14,56 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // ผู้ใช้ Admin หลัก (เป็นทั้ง Admin และ Technician เพื่อแก้ปัญหาเฉพาะหน้าใน Laravel 12.16.0)
+        // Admin User
         User::create([
-            'name' => 'Primary Admin',
-            'email' => 'admin@example.com',
-            'password' => Hash::make('password123'), // ตั้งรหัสผ่านที่คุณต้องการ
+            'name' => 'Admin BtuRepair',
+            'email' => 'admin@bturepair.com',
+            'password' => Hash::make('password123'), // เปลี่ยนรหัสผ่านตามต้องการ
+            'email_verified_at' => now(),
             'is_admin' => true,
-            'is_technician' => false, // ทำให้เป็น Technician ด้วย เพื่อให้ผ่าน admin_or_technician middleware
+            'is_technician' => false,
         ]);
 
-        // ผู้ใช้ Admin คนที่สอง (เป็นทั้ง Admin และ Technician)
-        // เพื่อทดสอบว่าปัญหาเฉพาะผู้ใช้เดิมหรือไม่
+        // Technician User 1
         User::create([
-            'name' => 'Secondary Admin',
-            'email' => 'admin2@example.com', // ใช้อีเมลที่ไม่ซ้ำ
-            'password' => Hash::make('password123'), // ตั้งรหัสผ่านที่คุณต้องการ
-            'is_admin' => true,
-            'is_technician' => true, // ทำให้เป็น Technician ด้วย
-        ]);
-
-        // ผู้ใช้ Technician
-        User::create([
-            'name' => 'Technician User',
-            'email' => 'tech@example.com',
-            'password' => Hash::make('techpass'),
-            'is_admin' => true,
+            'name' => 'Technician One',
+            'email' => 'tech1@bturepair.com',
+            'password' => Hash::make('password123'),
+            'email_verified_at' => now(),
+            'is_admin' => false,
             'is_technician' => true,
         ]);
 
-        // ผู้ใช้ทั่วไป
+        // Technician User 2
         User::create([
-            'name' => 'Normal User',
-            'email' => 'user@example.com',
-            'password' => Hash::make('userpass'),
+            'name' => 'Technician Two',
+            'email' => 'tech2@bturepair.com',
+            'password' => Hash::make('password123'),
+            'email_verified_at' => now(),
+            'is_admin' => false,
+            'is_technician' => true,
+        ]);
+
+        // Normal User (ตัวอย่าง)
+        User::create([
+            'name' => 'Test User',
+            'email' => 'user@bturepair.com',
+            'password' => Hash::make('password123'),
+            'email_verified_at' => now(),
             'is_admin' => false,
             'is_technician' => false,
         ]);
+
+        // ***** เพิ่ม User ใหม่ตรงนี้ *****
+        User::create([
+            'name' => 'Normal User Two', // <--- ชื่อใหม่
+            'email' => 'user2@bturepair.com', // <--- อีเมลใหม่ (ห้ามซ้ำ)
+            'password' => Hash::make('newpassword456'), // <--- รหัสผ่านใหม่
+            'email_verified_at' => now(),
+            'is_admin' => false, // <--- กำหนด role
+            'is_technician' => false, // <--- กำหนด role
+        ]);
+        // ***** สิ้นสุดการเพิ่ม User ใหม่ *****
+
     }
 }
-

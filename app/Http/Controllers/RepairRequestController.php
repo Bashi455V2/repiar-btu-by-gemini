@@ -3,228 +3,245 @@
 namespace App\Http\Controllers;
 
 use App\Models\RepairRequest;
-use App\Models\User; // ตรวจสอบให้แน่ใจว่ามีบรรทัดนี้อยู่แล้ว
+use App\Models\Category;
+use App\Models\Location;
+use App\Models\Status;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use App\Http\Controllers\Controller;
+// use App\Http\Requests\StoreRepairRequest; // ตัวอย่างถ้าใช้ Form Request
+// use App\Http\Requests\UpdateRepairRequest; // ตัวอย่างถ้าใช้ Form Request
 
 class RepairRequestController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // กำหนด Middleware สำหรับ Authorization โดยใช้ Policies
+    // public function __construct()
+    // {
+    //     // 'repair_request' คือชื่อ parameter ที่ใช้ใน route (เช่น Route::resource('repair_requests', ...))
+    //     $this->authorizeResource(RepairRequest::class, 'repair_request');
+    // }
+
+    private function getCommonViewData()
+    {
+        return [
+            'categories' => Category::orderBy('name')->get(),
+            'locations' => Location::orderBy('name')->get(),
+            'statuses' => Status::orderBy('name')->get(),
+            'technicians' => User::where('is_technician', true)->orderBy('name')->get(),
+        ];
+    }
+
     public function index()
     {
-        if (Auth::check()) {
-            if (Auth::user()->is_admin || Auth::user()->is_technician) {
-                // หากเป็นแอดมินหรือช่าง ให้ดึงรายการทั้งหมดไปแสดงที่นี่
-                $repairRequests = RepairRequest::latest()->paginate(10);
-            } else {
-                // หากเป็นผู้ใช้งานทั่วไป ให้ดึงเฉพาะรายการที่ตัวเองแจ้งเข้ามา
-                $repairRequests = Auth::user()->repairRequests()->latest()->paginate(10);
-            }
-        } else {
-            return redirect()->route('login')->with('error', 'กรุณาเข้าสู่ระบบเพื่อดูรายการแจ้งซ่อม');
-        }
+        // $this->authorize('viewAny', RepairRequest::class); // ใช้ถ้า authorizeResource ไม่ได้ครอบคลุม หรือต้องการ logic พิเศษ
+        $user = Auth::user();
+        $query = RepairRequest::withDetails()->latest(); // สมมติว่ามี scopeWithDetails()
 
+        if ($user->is_admin) {
+            $repairRequests = $query->paginate(10);
+        } elseif ($user->is_technician) {
+            $repairRequests = $query->where(function($q) use ($user) {
+                                    $q->where('assigned_to_user_id', $user->id)
+                                      ->orWhereNull('assigned_to_user_id');
+                                })->paginate(10);
+        } else {
+            $repairRequests = $user->repairRequests()
+                                  ->withDetails() // สมมติว่ามี scopeWithDetails()
+                                  ->latest()->paginate(10);
+        }
         return view('repair_requests.index', compact('repairRequests'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+     public function create()
     {
-        return view('repair_requests.create');
+        $this->authorize('create', RepairRequest::class); // <--- บรรทัดที่เรียก authorize
+        // ... (ส่วนที่เหลือของ create method) ...
+        $categories = Category::orderBy('name')->get();
+        $locations = Location::orderBy('name')->get();
+        return view('repair_requests.create', compact('categories', 'locations'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request) // ควรเปลี่ยนเป็น StoreRepairRequest $request ถ้าใช้ Form Request
     {
+        $this->authorize('create', RepairRequest::class);
+
         $validatedData = $request->validate([
-            'subject' => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'location' => 'required|string|max:255',
-            'contact_info' => 'nullable|string|max:255',
-            'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'location_id' => 'required|exists:locations,id',
+            'category_id' => 'required|exists:categories,id',
+            'requester_phone' => 'nullable|string|max:20',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('attachments', 'public');
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('repair_images', 'public');
         }
+
+        $defaultStatus = Status::where('name', 'รอดำเนินการ')->firstOrFail();
 
         Auth::user()->repairRequests()->create([
-            'subject' => $validatedData['subject'],
+            'title' => $validatedData['title'],
             'description' => $validatedData['description'],
-            'location' => $validatedData['location'],
-            'contact_info' => $validatedData['contact_info'],
-            'attachment' => $attachmentPath,
-            'status' => 'pending',
-            'priority' => 'normal',
+            'location_id' => $validatedData['location_id'],
+            'category_id' => $validatedData['category_id'],
+            'status_id' => $defaultStatus->id,
+            'requester_phone' => $validatedData['requester_phone'] ?? (Auth::user()->phone_number ?? null),
+            'image_path' => $imagePath,
         ]);
 
-        return redirect()->route('repair_requests.index')->with('success', 'แจ้งซ่อมสำเร็จแล้ว!');
+        return redirect()->route('repair_requests.index')->with('status', 'แจ้งซ่อมเรียบร้อยแล้ว!');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(RepairRequest $repairRequest)
     {
-        if (Auth::user()->id !== $repairRequest->user_id && !Auth::user()->is_admin && !Auth::user()->is_technician) {
-            abort(403); // Unauthorized
-        }
+        $this->authorize('view', $repairRequest);
+        $repairRequest->loadDetails(); // สมมติว่ามี method loadDetails() ที่ใช้ $this->load(...)
         return view('repair_requests.show', compact('repairRequest'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(RepairRequest $repairRequest)
     {
-        if (Auth::user()->id !== $repairRequest->user_id && !Auth::user()->is_admin && !Auth::user()->is_technician) {
-            abort(403); // Unauthorized
-        }
-
-        $technicians = User::where('is_technician', true)->get();
-
-        return view('repair_requests.edit', compact('repairRequest', 'technicians'));
+        $this->authorize('update', $repairRequest);
+        $repairRequest->loadDetails();
+        $viewData = array_merge(['repairRequest' => $repairRequest], $this->getCommonViewData());
+        return view('repair_requests.edit', $viewData);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, RepairRequest $repairRequest)
     {
-        if (Auth::user()->id !== $repairRequest->user_id && !Auth::user()->is_admin && !Auth::user()->is_technician) {
-            abort(403); // Unauthorized
-        }
+        $this->authorize('update', $repairRequest); // ใช้ Policy ตรวจสอบสิทธิ์ในการเริ่มอัปเดต
 
-        $validatedData = $request->validate([
-            'subject' => 'required|string|max:255',
+        $user = Auth::user();
+
+        $validationRules = [
+            'title' => 'required|string|max:255',
             'description' => 'required|string',
-            'location' => 'required|string|max:255',
-            'contact_info' => 'nullable|string|max:255',
-            'attachment' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-            'status' => 'nullable|string|in:pending,in_progress,completed,cancelled',
-            'priority' => 'nullable|string|in:low,normal,high,urgent',
-            'assigned_to' => 'nullable|exists:users,id',
-            'completed_at' => 'nullable|date',
-        ]);
+            'location_id' => 'required|exists:locations,id',
+            'category_id' => 'required|exists:categories,id',
+            'requester_phone' => 'nullable|string|max:20',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'clear_image' => 'nullable|boolean',
+        ];
 
-        $repairRequest->subject = $validatedData['subject'];
-        $repairRequest->description = $validatedData['description'];
-        $repairRequest->location = $validatedData['location'];
-        $repairRequest->contact_info = $validatedData['contact_info'];
+        // เพิ่ม Validation Rules สำหรับ fields ที่ Admin/Technician เท่านั้นที่แก้ไขได้
+        if ($user->is_admin || $user->is_technician) {
+            $validationRules['status_id'] = ['required', 'exists:statuses,id'];
+            // ทดลองใช้ Rule ที่ง่ายกว่านี้ก่อนเพื่อทดสอบปัญหา "The selected assigned to user id is invalid."
+            $validationRules['assigned_to_user_id'] = ['nullable', 'exists:users,id'];
+            // ถ้า Rule ข้างบนทำงานได้ดี ค่อยลองกลับไปใช้ Rule เดิมที่ซับซ้อนกว่า:
+            // $validationRules['assigned_to_user_id'] = ['nullable', 'exists:users,id,is_technician,true'];
+            $validationRules['remarks_by_technician'] = ['nullable', 'string'];
+            $validationRules['completed_at'] = ['nullable', 'date'];
+        }
 
-        if ($request->hasFile('attachment')) {
-            if ($repairRequest->attachment) {
-                Storage::disk('public')->delete($repairRequest->attachment);
+        $validatedData = $request->validate($validationRules);
+
+        // ข้อมูลที่ User ทุกคน (ที่มีสิทธิ์ update ตาม Policy) สามารถแก้ไขได้
+        $dataToUpdate = [
+            'title' => $validatedData['title'],
+            'description' => $validatedData['description'],
+            'location_id' => $validatedData['location_id'],
+            'category_id' => $validatedData['category_id'],
+            'requester_phone' => $validatedData['requester_phone'] ?? $repairRequest->requester_phone, // เก็บค่าเดิมถ้าไม่ได้ส่งมา
+        ];
+
+        // จัดการรูปภาพ
+        if ($request->hasFile('image')) {
+            if ($repairRequest->image_path) {
+                Storage::disk('public')->delete($repairRequest->image_path);
             }
-            $repairRequest->attachment = $request->file('attachment')->store('attachments', 'public');
-        } elseif ($request->boolean('clear_attachment')) {
-            if ($repairRequest->attachment) {
-                Storage::disk('public')->delete($repairRequest->attachment);
-                $repairRequest->attachment = null;
+            $dataToUpdate['image_path'] = $request->file('image')->store('repair_images', 'public');
+        } elseif ($request->boolean('clear_image') && $repairRequest->image_path) {
+            Storage::disk('public')->delete($repairRequest->image_path);
+            $dataToUpdate['image_path'] = null;
+        }
+
+        // ข้อมูลที่ Admin/Technician เท่านั้นที่แก้ไขได้
+        if ($user->is_admin || $user->is_technician) {
+            if (isset($validatedData['status_id'])) {
+                $dataToUpdate['status_id'] = $validatedData['status_id'];
+                $statusModel = Status::find($validatedData['status_id']);
+                if ($statusModel && $statusModel->name === 'ซ่อมเสร็จสิ้น' && !$repairRequest->completed_at) {
+                    $dataToUpdate['completed_at'] = now();
+                } elseif ($statusModel && $statusModel->name !== 'ซ่อมเสร็จสิ้น') {
+                    // ถ้าสถานะไม่ใช่ "ซ่อมเสร็จสิ้น" และมีการส่ง completed_at มา ให้ใช้ค่าที่ส่งมา
+                    // ถ้าไม่ได้ส่ง completed_at มา และสถานะไม่ใช่ "ซ่อมเสร็จสิ้น" ให้ตั้งเป็น null
+                    $dataToUpdate['completed_at'] = $validatedData['completed_at'] ?? null;
+                }
+            }
+
+            // ใช้ array_key_exists เพื่อให้สามารถตั้งค่าเป็น null ได้ (ยกเลิกการมอบหมาย)
+            if (array_key_exists('assigned_to_user_id', $validatedData)) {
+                $dataToUpdate['assigned_to_user_id'] = $validatedData['assigned_to_user_id'];
+            }
+
+            if (isset($validatedData['remarks_by_technician'])) {
+                $dataToUpdate['remarks_by_technician'] = $validatedData['remarks_by_technician'];
+            }
+
+            // ถ้ามีการส่ง completed_at มาโดยตรง และยังไม่ได้ถูกจัดการโดย logic ของ status_id
+            if (isset($validatedData['completed_at']) && !array_key_exists('completed_at', $dataToUpdate)) {
+                 $dataToUpdate['completed_at'] = $validatedData['completed_at'];
             }
         }
 
-        if (Auth::user()->is_admin || Auth::user()->is_technician) {
-            if (isset($validatedData['status'])) {
-                $repairRequest->status = $validatedData['status'];
-            }
+        $repairRequest->update($dataToUpdate);
 
-            if (isset($validatedData['priority'])) {
-                $repairRequest->priority = $validatedData['priority'];
-            }
-
-            $repairRequest->assigned_to = $validatedData['assigned_to'] ?? null;
-
-            if ($repairRequest->status === 'completed') {
-                $repairRequest->completed_at = $validatedData['completed_at'] ?? now();
-            } else {
-                $repairRequest->completed_at = null;
-            }
-        }
-
-        $repairRequest->save();
-
-        return redirect()->route('repair_requests.index')->with('success', 'รายการแจ้งซ่อมได้รับการอัปเดตแล้ว!');
+        // พิจารณา redirect ไปหน้าที่เหมาะสม
+        $redirectRoute = ($user->is_admin || $user->is_technician) ? 'repair_requests.manage' : 'repair_requests.show';
+        return redirect()->route($redirectRoute, $repairRequest)->with('status', 'รายการแจ้งซ่อมได้รับการอัปเดตเรียบร้อยแล้ว!');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(RepairRequest $repairRequest)
     {
-        if (Auth::user()->id !== $repairRequest->user_id && !Auth::user()->is_admin) {
-            abort(403); // Unauthorized
+        $this->authorize('delete', $repairRequest);
+        if ($repairRequest->image_path) {
+            Storage::disk('public')->delete($repairRequest->image_path);
         }
-
-        if ($repairRequest->attachment) {
-            Storage::disk('public')->delete($repairRequest->attachment);
-        }
-
         $repairRequest->delete();
-
-        return redirect()->route('repair_requests.index')->with('success', 'รายการแจ้งซ่อมถูกลบแล้ว!');
+        return redirect()->route('repair_requests.index')->with('status', 'รายการแจ้งซ่อมถูกลบแล้ว!');
     }
 
-    /**
-     * Display a listing of repair requests for management by admin/technician.
-     */
     public function manage()
     {
-
-      
-
-        // Middleware HasRole ('admin,technician') จะจัดการการอนุญาตสิทธิ์ที่ระดับ Route แล้ว
-        if (!Auth::user()->is_admin && !Auth::user()->is_technician) {
-            abort(403, 'คุณไม่ได้รับอนุญาตให้เข้าถึงหน้านี้');
-        }
-
-        // ดึงรายการแจ้งซ่อมทั้งหมดมาแสดงผล
-        $repairRequests = RepairRequest::latest()->paginate(10);
-
-        // <--- บรรทัดที่ถูกเพิ่ม/แก้ไขให้สมบูรณ์: ดึงรายชื่อช่างทั้งหมด
-        $technicians = User::where('is_technician', true)->get();
-
-        // ส่งทั้งรายการแจ้งซ่อมและรายชื่อช่างไปยัง View
-        return view('repair_requests.manage', compact('repairRequests', 'technicians'));
+        // Middleware HasRole จัดการสิทธิ์ที่ Route แล้ว
+        $repairRequests = RepairRequest::withDetails()->latest()->paginate(15);
+        $viewData = array_merge(['repairRequests' => $repairRequests], $this->getCommonViewData());
+        return view('repair_requests.manage', $viewData);
     }
 
-    /**
-     * Update status, priority, assigned_to, and completed_at for a specific repair request.
-     * This method is intended for quick updates, possibly from a list view.
-     */
-    public function updateStatusAndAssign(Request $request, RepairRequest $repairRequest)
+    public function updateStatusAndAssign(Request $requestInput, RepairRequest $repairRequest)
     {
-        if (!Auth::user()->is_admin && !Auth::user()->is_technician) {
-            abort(403, 'คุณไม่ได้รับอนุญาตให้ดำเนินการนี้');
-        }
+        // Middleware HasRole จัดการสิทธิ์ที่ Route แล้ว
+        // $this->authorize('manageRequests', RepairRequest::class); // หรือใช้ Policy method ที่สร้างขึ้นเอง
 
-        $validatedData = $request->validate([
-            'status' => 'required|string|in:pending,in_progress,completed,cancelled',
-            'priority' => 'required|string|in:low,normal,high,urgent',
-            'assigned_to' => 'nullable|exists:users,id',
-            'completed_at' => 'nullable|date',
+        $validatedData = $requestInput->validate([
+            'status_id' => 'required|exists:statuses,id',
+            'assigned_to_user_id' => 'nullable|exists:users,id',
+            'remarks_by_technician' => 'nullable|string',
         ]);
 
-        $repairRequest->status = $validatedData['status'];
-        $repairRequest->priority = $validatedData['priority'];
-        $repairRequest->assigned_to = $validatedData['assigned_to'] ?? null;
+        $dataToUpdate = [
+            'status_id' => $validatedData['status_id'],
+            'assigned_to_user_id' => $validatedData['assigned_to_user_id'] ?? null,
+            'remarks_by_technician' => $validatedData['remarks_by_technician'] ?? $repairRequest->remarks_by_technician,
+        ];
 
-        if ($repairRequest->status === 'completed') {
-            $repairRequest->completed_at = $validatedData['completed_at'] ?? now();
-        } else {
-            $repairRequest->completed_at = null;
+        $statusModel = Status::find($validatedData['status_id']);
+        if ($statusModel && $statusModel->name === 'ซ่อมเสร็จสิ้น' && !$repairRequest->completed_at) {
+            $dataToUpdate['completed_at'] = now();
+        } elseif ($statusModel && $statusModel->name !== 'ซ่อมเสร็จสิ้น') {
+            $dataToUpdate['completed_at'] = null;
         }
 
-        $repairRequest->save();
+        $repairRequest->update($dataToUpdate);
 
-        return redirect()->route('repair_requests.manage')->with('success', 'สถานะและข้อมูลการมอบหมายได้รับการอัปเดตแล้ว!');
+        $redirectRoute = $requestInput->input('redirect_to_manage', true) ? 'repair_requests.manage' : 'repair_requests.show';
+        return redirect()->route($redirectRoute, $repairRequest->id)->with('status', 'สถานะและข้อมูลการมอบหมายได้รับการอัปเดตแล้ว!');
     }
 }

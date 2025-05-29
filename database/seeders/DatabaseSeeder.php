@@ -12,10 +12,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create(); // ถ้ามีอยู่แล้ว อาจจะ comment หรือลบทิ้งไปก่อน
+        // \App\Models\User::factory(10)->create(); // ถ้าคุณใช้ Factory
 
         $this->call([
-            UserSeeder::class, // เพิ่มบรรทัดนี้
+            UserSeeder::class,
+            StatusSeeder::class,
+            LocationSeeder::class,
+            CategorySeeder::class,
+            // RepairRequestSeeder::class, // คุณอาจจะสร้าง Seeder สำหรับ RepairRequest ตัวอย่างทีหลัง
         ]);
     }
 }

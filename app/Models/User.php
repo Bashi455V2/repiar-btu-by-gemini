@@ -2,27 +2,24 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany; // <--- เพิ่มบรรทัดนี้
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable 
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        // คุณอาจจะต้องเพิ่ม 'is_admin', 'is_technician' ตรงนี้ด้วย หากคุณเพิ่มคอลัมน์เหล่านี้ในตาราง users
         'is_admin',
         'is_technician',
     ];
@@ -30,7 +27,7 @@ class User extends Authenticatable
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -38,34 +35,30 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            // คุณอาจจะต้องเพิ่มการ cast สำหรับ 'is_admin', 'is_technician' ตรงนี้ด้วย
-            'is_admin' => 'boolean',
-            'is_technician' => 'boolean',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_admin' => 'boolean',
+        'is_technician' => 'boolean',
+    ];
 
     /**
-     * Get the repair requests for the user.
+     * Get all of the repair requests submitted by the user.
      */
-    public function repairRequests(): HasMany
+    public function repairRequests() // ชื่อเดิมที่คุณใช้
     {
         return $this->hasMany(RepairRequest::class, 'user_id');
     }
 
     /**
-     * Get the repair requests assigned to the user (as a technician).
+     * Get all of the repair requests assigned to the user (if they are a technician).
      */
-    public function assignedRepairRequests(): HasMany
+    public function assignedTasks() // ชื่อเดิมที่คุณใช้
     {
-        return $this->hasMany(RepairRequest::class, 'assigned_to');
+        return $this->hasMany(RepairRequest::class, 'assigned_to_user_id');
     }
 }
