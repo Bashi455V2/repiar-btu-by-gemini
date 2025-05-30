@@ -13,7 +13,7 @@
                         กรอกข้อมูลผู้ใช้ใหม่
                     </h3> --}}
 
-                    <form method="POST" action="{{ route('users.store') }}">
+                    <form method="POST" action="{{ route('admin.users.store') }}">
                         @csrf
 
                         <div>
@@ -60,7 +60,7 @@
                         </div>
 
                         <div class="flex items-center justify-end mt-8 space-x-4">
-                            <a href="{{ route('users.index') }}" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 underline rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-800">
+                            <a href="{{ route('admin.users.index') }}" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 underline rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-800">
                                 {{ __('ยกเลิก') }}
                             </a>
                             {{-- <x-primary-button> --}}

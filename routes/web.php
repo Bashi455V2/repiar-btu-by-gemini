@@ -3,13 +3,14 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepairRequestController;
 use Illuminate\Support\Facades\Route;
-// use App\Models\RepairRequest; // <--- **เอา Model ออกจากการเรียกโดยตรงใน Route Closure**
-// use App\Models\User;        // <--- **เอา Model ออกจากการเรียกโดยตรงใน Route Closure**
+
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\DashboardController; // <--- **เพิ่ม Use Statement นี้**
 // use Illuminate\Support\Facades\Auth; // <--- ไม่จำเป็นใน Route Closure อีกต่อไป
 use App\Http\Middleware\HasRole;
-
+use App\Http\Controllers\Admin\StatusController;
+use App\Http\Controllers\Admin\LocationController; // <--- **เพิ่ม Use Statement สำหรับ LocationController**
+use App\Http\Controllers\Admin\CategoryController; // <--- **เพิ่ม Use Statement สำหรับ CategoryController**
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -47,10 +48,18 @@ Route::middleware('auth')->group(function () { // คุณอาจจะเพ
     // Route สำหรับผู้ใช้งานทั่วไป (ทุกคนที่ล็อกอินเข้าสู่ระบบได้)
     Route::resource('repair_requests', RepairRequestController::class);
 
-    // Routes สำหรับการจัดการผู้ใช้ (Admin Only)
-    Route::middleware(HasRole::class . ':admin')->group(function () {
-        Route::resource('users', UserController::class);
+   
+    // ...
+    Route::middleware(HasRole::class . ':admin')
+         ->prefix('admin')
+         ->name('admin.')
+         ->group(function () {
+        Route::resource('users', \App\Http\Controllers\UserController::class)->except(['show']);
+        Route::resource('locations', \App\Http\Controllers\Admin\LocationController::class); // ตัวอย่างถ้า LocationController อยู่ใน Admin namespace
+        Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class); // ตัวอย่าง
+        Route::resource('statuses', StatusController::class); // <--- **ตรวจสอบ Controller และ Namespace ที่นี่**
     });
+
 });
 
 require __DIR__.'/auth.php';

@@ -55,6 +55,7 @@ class RepairRequestController extends Controller
         return view('repair_requests.index', compact('repairRequests'));
     }
 
+    
      public function create()
     {
         $this->authorize('create', RepairRequest::class); // <--- บรรทัดที่เรียก authorize
@@ -204,7 +205,7 @@ class RepairRequestController extends Controller
             Storage::disk('public')->delete($repairRequest->image_path);
         }
         $repairRequest->delete();
-        return redirect()->route('repair_requests.index')->with('status', 'รายการแจ้งซ่อมถูกลบแล้ว!');
+        return redirect()->route('repair_requests.manage')->with('status', 'รายการแจ้งซ่อมถูกลบแล้ว!');
     }
 
     public function manage()
