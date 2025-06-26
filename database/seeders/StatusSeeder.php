@@ -18,6 +18,10 @@ class StatusSeeder extends Seeder
         Status::create(['name' => 'ซ่อมเสร็จสิ้น', 'color_class' => 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-100']);
         Status::create(['name' => 'ยกเลิก', 'color_class' => 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-100']);
         Status::create(['name' => 'รออะไหล่', 'color_class' => 'bg-orange-100 text-orange-800 dark:bg-orange-700 dark:text-orange-100']);
+        Status::create(['name' => 'รอดำเนินการ', 'color_class_tailwind' => '#F59E0B']); // Amber 500
+Status::create(['name' => 'กำลังดำเนินการ', 'color_class_tailwind' => '#3B82F6']); // Blue 500
+Status::create(['name' => 'ซ่อมเสร็จสิ้น', 'color_class_tailwind' => '#10B981']); // Green 500
+Status::create(['name' => 'ยกเลิก', 'color_class_tailwind' => '#EF4444']);    // Red 500
         // เพิ่มสถานะอื่นๆ ตามต้องการ
     }
 }

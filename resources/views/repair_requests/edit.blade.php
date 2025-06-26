@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
-            {{ __('แก้ไขรายการแจ้งซ่อม #') }}{{ $repairRequest->id }} - {{ $repairRequest->title }}
+            {{ __('แก้ไขรายการแจ้งซ่อม #') }}{{ $repairRequest->id }} - {{ Str::limit($repairRequest->title, 50) }}
         </h2>
     </x-slot>
 
@@ -13,8 +13,10 @@
                         @csrf
                         @method('PUT')
 
+                        {{-- ส่วนข้อมูลทั่วไปที่ User เจ้าของ (ถ้าสถานะอนุญาต), Admin, หรือ Technician (ที่ Assign) อาจจะแก้ไขได้ตาม Policy 'update' --}}
                         <div class="mt-4">
                             <x-input-label for="title" :value="__('เรื่อง/อาการเบื้องต้น')" class="text-slate-700 dark:text-slate-300" />
+                            {{-- ถ้าต้องการให้ User ทั่วไปแก้ไขไม่ได้เมื่อสถานะไม่ใช่ 'รอดำเนินการ' อาจจะต้องเพิ่มเงื่อนไข readonly ที่นี่ หรือ Policy จัดการแล้ว --}}
                             <x-text-input id="title" class="block mt-1 w-full" type="text" name="title" :value="old('title', $repairRequest->title)" required />
                             <x-input-error :messages="$errors->get('title')" class="mt-2" />
                         </div>
@@ -56,10 +58,10 @@
                         </div>
 
                         <div class="mt-4">
-                            <x-input-label for="image" :value="__('รูปภาพประกอบ')" class="text-slate-700 dark:text-slate-300" />
+                            <x-input-label for="image" :value="__('รูปภาพประกอบ (เลือกใหม่ถ้าต้องการเปลี่ยน)')" class="text-slate-700 dark:text-slate-300" />
                             @if ($repairRequest->image_path)
                                 <div class="mb-2">
-                                    <img src="{{ Storage::url($repairRequest->image_path) }}" alt="Current Image" class="max-h-48 rounded_md">
+                                    <img src="{{ Storage::url($repairRequest->image_path) }}" alt="Current Image" class="max-h-48 rounded-md shadow">
                                     <label for="clear_image" class="inline-flex items-center mt-1">
                                         <input type="checkbox" id="clear_image" name="clear_image" value="1" class="rounded border-slate-300 text-sky-600 shadow-sm focus:ring-sky-500">
                                         <span class="ms-2 text-sm text-slate-600 dark:text-slate-400">{{ __('ลบรูปภาพปัจจุบัน') }}</span>
@@ -70,63 +72,86 @@
                             <x-input-error :messages="$errors->get('image')" class="mt-2" />
                         </div>
 
-                        {{-- ส่วนสำหรับ Admin และ Technician --}}
+                        {{-- ส่วนสำหรับ Admin และ Technician ที่ได้รับมอบหมาย (ตามสิทธิ์ 'update' ใน Policy) --}}
+                        {{-- สิทธิ์ 'update' ใน Policy ของคุณจะกรองว่าใครสามารถเข้าหน้านี้ได้ --}}
+                        {{-- User เจ้าของงานถ้าสถานะเป็น 'รอดำเนินการ' ก็อาจจะเข้ามาได้ แต่จะไม่เห็นฟิลด์เหล่านี้ --}}
                         @if (Auth::user()->is_admin || Auth::user()->is_technician)
-                            <hr class="my-6 border-slate-300 dark:border-slate-600">
-                            <h4 class="text-md font-semibold text-slate-700 dark:text-slate-200 mb-2">ส่วนของผู้ดูแล/ช่าง</h4>
+                            {{-- เงื่อนไขนี้เพื่อให้แน่ใจว่า Technician ที่ไม่ได้ Assign งานนี้ (แต่ Policy update อาจจะยังอนุญาตให้เข้ามาได้ถ้างานยังไม่ Assign) --}}
+                            {{-- หรือ Admin จะเห็นส่วนนี้เสมอ --}}
+                            @if (Auth::user()->is_admin || ($repairRequest->assigned_to_user_id === Auth::id() || is_null($repairRequest->assigned_to_user_id)))
+                                <hr class="my-6 border-slate-300 dark:border-slate-600">
+                                <h4 class="text-md font-semibold text-slate-700 dark:text-slate-200 mb-2">ส่วนของผู้ดูแล/ช่าง</h4>
 
-                            <div class="mt-4">
-                                <x-input-label for="status_id" :value="__('สถานะปัจจุบัน')" class="text-slate-700 dark:text-slate-300" />
-                                <select id="status_id" name="status_id" class="block mt-1 w-full border-slate-300 dark:border-slate-600 focus:border-sky-500 dark:focus:border-sky-600 focus:ring-sky-500 dark:focus:ring-sky-600 rounded-md shadow-sm bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-                                    @foreach ($statuses as $status)
-                                        <option value="{{ $status->id }}" {{ old('status_id', $repairRequest->status_id) == $status->id ? 'selected' : '' }}>
-                                            {{ $status->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <x-input-error :messages="$errors->get('status_id')" class="mt-2" />
-                            </div>
+                                <div class="mt-4">
+                                    <x-input-label for="status_id" :value="__('สถานะปัจจุบัน')" class="text-slate-700 dark:text-slate-300" />
+                                    <select id="status_id" name="status_id" class="block mt-1 w-full border-slate-300 dark:border-slate-600 focus:border-sky-500 dark:focus:border-sky-600 focus:ring-sky-500 dark:focus:ring-sky-600 rounded-md shadow-sm bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                        @foreach ($statuses as $status) {{-- ตรวจสอบว่า Controller ส่ง $statuses มา --}}
+                                            <option value="{{ $status->id }}" {{ old('status_id', $repairRequest->status_id) == $status->id ? 'selected' : '' }}>
+                                                {{ $status->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <x-input-error :messages="$errors->get('status_id')" class="mt-2" />
+                                </div>
 
-                            <div class="mt-4">
-                                <x-input-label for="assigned_to_user_id" :value="__('มอบหมายให้ช่าง')" class="text-slate-700 dark:text-slate-300" />
-                                <select id="assigned_to_user_id" name="assigned_to_user_id" class="block mt-1 w-full border-slate-300 dark:border-slate-600 focus:border-sky-500 dark:focus:border-sky-600 focus:ring-sky-500 dark:focus:ring-sky-600 rounded-md shadow-sm bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-                                    <option value="">-- ยังไม่มอบหมาย --</option>
-                                    @foreach ($technicians as $technician)
-                                        <option value="{{ $technician->id }}" {{ old('assigned_to_user_id', $repairRequest->assigned_to_user_id) == $technician->id ? 'selected' : '' }}>
-                                            {{ $technician->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <x-input-error :messages="$errors->get('assigned_to_user_id')" class="mt-2" />
-                            </div>
+                                @if (Auth::user()->is_admin) {{-- "มอบหมายให้ช่าง" แสดงให้ Admin เท่านั้น --}}
+                                <div class="mt-4">
+                                    <x-input-label for="assigned_to_user_id" :value="__('มอบหมายให้ช่าง')" class="text-slate-700 dark:text-slate-300" />
+                                    <select id="assigned_to_user_id" name="assigned_to_user_id" class="block mt-1 w-full border-slate-300 dark:border-slate-600 focus:border-sky-500 dark:focus:border-sky-600 focus:ring-sky-500 dark:focus:ring-sky-600 rounded-md shadow-sm bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                                        <option value="">-- ยังไม่มอบหมาย --</option>
+                                        @foreach ($technicians as $technician) {{-- ตรวจสอบว่า Controller ส่ง $technicians มา --}}
+                                            <option value="{{ $technician->id }}" {{ old('assigned_to_user_id', $repairRequest->assigned_to_user_id) == $technician->id ? 'selected' : '' }}>
+                                                {{ $technician->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <x-input-error :messages="$errors->get('assigned_to_user_id')" class="mt-2" />
+                                </div>
+                                @endif
 
-                            <div class="mt-4">
-                                <x-input-label for="remarks_by_technician" :value="__('หมายเหตุจากช่าง')" class="text-slate-700 dark:text-slate-300" />
-                                <textarea id="remarks_by_technician" name="remarks_by_technician" rows="3" class="block mt-1 w-full border-slate-300 dark:border-slate-600 focus:border-sky-500 dark:focus:border-sky-600 focus:ring-sky-500 dark:focus:ring-sky-600 rounded-md shadow-sm bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200">{{ old('remarks_by_technician', $repairRequest->remarks_by_technician) }}</textarea>
-                                <x-input-error :messages="$errors->get('remarks_by_technician')" class="mt-2" />
-                            </div>
+                                {{-- "หมายเหตุจากช่าง/ผู้ดำเนินการ" แสดงให้ Admin และ Technician ที่ได้รับมอบหมายงานนี้ --}}
+                                <div class="mt-4">
+                                    <x-input-label for="remarks_by_technician" :value="Auth::user()->is_technician ? __('หมายเหตุจากช่าง') : __('หมายเหตุ (โดยผู้ดำเนินการ/Admin)')" class="text-slate-700 dark:text-slate-300" />
+                                    <textarea id="remarks_by_technician" name="remarks_by_technician" rows="3" class="block mt-1 w-full border-slate-300 dark:border-slate-600 focus:border-sky-500 dark:focus:border-sky-600 focus:ring-sky-500 dark:focus:ring-sky-600 rounded-md shadow-sm bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200">{{ old('remarks_by_technician', $repairRequest->remarks_by_technician) }}</textarea>
+                                    <x-input-error :messages="$errors->get('remarks_by_technician')" class="mt-2" />
+                                </div>
+                            @endif
                         @endif
 
 
-                       {{-- ในส่วนปุ่มของฟอร์ม resources/views/repair_requests/edit.blade.php --}}
-<div class="flex items-center justify-end mt-8 space-x-4">
-    @php
-        $cancelUrl = route('repair_requests.show', $repairRequest->id); // Default fallback to show page
-        if (Auth::user()->is_admin || Auth::user()->is_technician) {
-            // ถ้ามาจากหน้า manage อาจจะเก็บ URL มาใน session หรือ query string
-            // หรือให้กลับไปหน้า manage โดยตรง
-            $cancelUrl = session('previous_url_for_edit', route('repair_requests.manage'));
-        } else {
-            $cancelUrl = route('repair_requests.index');
-        }
-    @endphp
-    <a href="{{ $cancelUrl }}" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 underline rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-800">
-        {{ __('ยกเลิก') }}
-    </a>
-    <button type="submit" class="inline-flex items-center px-6 py-2.5 bg-sky-600 ...">
-        {{ __('บันทึกการเปลี่ยนแปลง') }}
-    </button>
-</div>
+                        <div class="flex items-center justify-end mt-8 space-x-4">
+                            @php
+                                $previousUrlEffective = url()->previous();
+                                $currentUrlFull = url()->full();
+
+                                $defaultFallbackRouteEdit = route('repair_requests.show', $repairRequest->id); // Default คือกลับไปหน้า show ของ item นี้
+
+                                if (Auth::check()) {
+                                    if (Auth::user()->is_admin) {
+                                        // สำหรับ Admin, ถ้าไม่ได้มาจากหน้าอื่นที่ชัดเจน อาจจะให้กลับไปหน้า manage หรือ show
+                                        // $defaultFallbackRouteEdit = route('admin.manage');
+                                    } elseif (Auth::user()->is_technician) {
+                                        $defaultFallbackRouteEdit = route('repair_requests.index'); // Technician กลับไปหน้ารายการของตัวเอง (Controller index จัดการ view)
+                                    } else { // User ทั่วไป
+                                        $defaultFallbackRouteEdit = route('repair_requests.index'); // User ทั่วไป กลับไปหน้ารายการของตัวเอง (Controller index จัดการ view)
+                                    }
+                                }
+
+                                $usePreviousUrl = ($previousUrlEffective &&
+                                                   $previousUrlEffective !== $currentUrlFull &&
+                                                   $previousUrlEffective !== route('repair_requests.edit', $repairRequest->id, false) &&
+                                                   $previousUrlEffective !== route('login', [], false) &&
+                                                   $previousUrlEffective !== route('register', [], false));
+
+                                $cancelUrl = $usePreviousUrl ? $previousUrlEffective : $defaultFallbackRouteEdit;
+                            @endphp
+                            <a href="{{ $cancelUrl }}" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 underline rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-800">
+                                {{ __('ยกเลิก') }}
+                            </a>
+                            <button type="submit" class="inline-flex items-center px-6 py-2.5 bg-sky-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-sky-700 active:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition ease-in-out duration-150">
+                                <i class="fas fa-save mr-2"></i>{{ __('บันทึกการเปลี่ยนแปลง') }}
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>

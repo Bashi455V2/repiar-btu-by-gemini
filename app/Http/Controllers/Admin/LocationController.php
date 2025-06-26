@@ -11,9 +11,14 @@ class LocationController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+     public function index()
     {
-        $locations = Location::orderBy('name')->paginate(10); // หรือ orderBy('created_at', 'desc')
+        // VVVVVV แก้ไขบรรทัดนี้ VVVVVV
+        $locations = Location::withCount('repairRequests') // <--- เพิ่ม withCount('repairRequests')
+                             ->orderBy('name')
+                             ->paginate(10);
+        // ^^^^^^ แก้ไขบรรทัดนี้ ^^^^^^
+
         return view('admin.locations.index', compact('locations'));
     }
 
@@ -83,14 +88,18 @@ class LocationController extends Controller
      * Remove the specified resource from storage.
      */
     public function destroy(Location $location)
-    {
-        // เพิ่มการตรวจสอบก่อนลบ เช่น สถานที่นี้มีการใช้งานใน Repair Requests หรือไม่
-        if ($location->repairRequests()->count() > 0) {
-            return redirect()->route('admin.locations.index')
-                             ->with('error', 'ไม่สามารถลบสถานที่นี้ได้ เนื่องจากมีการใช้งานอยู่ในการแจ้งซ่อม');
-        }
-
-        $location->delete();
-        return redirect()->route('admin.locations.index')->with('status', 'สถานที่ถูกลบเรียบร้อยแล้ว');
+{
+    if ($location->repairRequests()->count() > 0) {
+        return redirect()->route('admin.locations.index')
+                         ->with('error', 'ไม่สามารถลบสถานที่นี้ได้ เนื่องจากมีการใช้งานอยู่ในการแจ้งซ่อม');
     }
+
+    $location->delete();
+    return redirect()->route('admin.locations.index')->with('status', 'สถานที่ถูกลบเรียบร้อยแล้ว');
+}
+    // ใน app/Models/Location.php
+public function repairRequests()
+{
+    return $this->hasMany(RepairRequest::class, 'location_id');
+}
 }

@@ -4,62 +4,75 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepairRequestController;
 use Illuminate\Support\Facades\Route;
 
+// --- Controllers ---
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\DashboardController; // <--- **เพิ่ม Use Statement นี้**
-// use Illuminate\Support\Facades\Auth; // <--- ไม่จำเป็นใน Route Closure อีกต่อไป
-use App\Http\Middleware\HasRole;
+use App\Http\Controllers\Admin\AdminDashboardController; // แนะนำให้สร้าง Controller แยกสำหรับ Admin Dashboard เพื่อความชัดเจน
 use App\Http\Controllers\Admin\StatusController;
-use App\Http\Controllers\Admin\LocationController; // <--- **เพิ่ม Use Statement สำหรับ LocationController**
-use App\Http\Controllers\Admin\CategoryController; // <--- **เพิ่ม Use Statement สำหรับ CategoryController**
+use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\CategoryController;
+
+// --- Middleware ---
+use App\Http\Middleware\HasRole;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
 */
 
+// --- หน้าแรกสำหรับ Guest ---
 Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
-// Route สำหรับหน้าแรก (Welcome Page)
 
-// Route สำหรับ Dashboard (แก้ไขแล้ว)
-Route::get('/dashboard', [DashboardController::class, 'index']) // <--- **เปลี่ยนให้เรียก Controller**
-    ->middleware(['auth', 'verified', HasRole::class . ':admin']) // <--- **เพิ่ม HasRole middleware**
+
+// --- Route หลักหลังการ Login (สำหรับ RouteServiceProvider::HOME) ---
+// Route นี้ควรเป็นจุดเริ่มต้นกลางสำหรับผู้ใช้ทุกคนหลัง Login
+// Controller จะทำหน้าที่ตรวจสอบ Role และ Redirect ไปยังหน้าที่เหมาะสม
+// จึงไม่ควรมี Middleware HasRole:admin ที่นี่
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-// --- รวม Group Route ที่ต้องมีการล็อกอินทั้งหมดไว้ในบล็อกเดียว ---
-Route::middleware('auth')->group(function () { // คุณอาจจะเพิ่ม 'verified' ที่นี่ถ้าต้องการให้ทุกหน้าหลัง login ต้อง verify
-    // Routes สำหรับ Profile
+
+// --- Group Route ทั้งหมดที่ต้องมีการล็อกอิน ---
+Route::middleware('auth')->group(function () {
+
+    // Routes สำหรับ Profile (ใช้ร่วมกันทุก Role)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // ******** ย้าย Route /repair_requests/manage มาไว้ข้างบน Route::resource ********
-    // Route สำหรับ Admin/Technician เพื่อจัดการรายการแจ้งซ่อมทั้งหมด
-    Route::get('/repair_requests/manage', [RepairRequestController::class, 'manage'])
-        ->middleware(HasRole::class . ':admin,technician')
-        ->name('repair_requests.manage');
-
-    // Route สำหรับการอัปเดตสถานะ/มอบหมายงาน (ใช้ PUT/PATCH)
+    // Route สำหรับการอัปเดตสถานะ/มอบหมายงาน (ใช้โดย Admin/Technician)
     Route::put('/repair_requests/{repairRequest}/update_status_assign', [RepairRequestController::class, 'updateStatusAndAssign'])
         ->middleware(HasRole::class . ':admin,technician')
         ->name('repair_requests.update_status_assign');
 
-    // Route สำหรับผู้ใช้งานทั่วไป (ทุกคนที่ล็อกอินเข้าสู่ระบบได้)
+    // Resource Controller สำหรับ Repair Requests
+    // จะจัดการ Route: index, create, store, show, edit, update, destroy
+    // index จะถูกใช้โดย User ทั่วไป และ Technician
     Route::resource('repair_requests', RepairRequestController::class);
 
-   
-    // ...
-    Route::middleware(HasRole::class . ':admin')
-         ->prefix('admin')
-         ->name('admin.')
-         ->group(function () {
-        Route::resource('users', \App\Http\Controllers\UserController::class)->except(['show']);
-        Route::resource('locations', \App\Http\Controllers\Admin\LocationController::class); // ตัวอย่างถ้า LocationController อยู่ใน Admin namespace
-        Route::resource('categories', \App\Http\Controllers\Admin\CategoryController::class); // ตัวอย่าง
-        Route::resource('statuses', StatusController::class); // <--- **ตรวจสอบ Controller และ Namespace ที่นี่**
-    });
 
+    // --- Admin Group: Routes ทั้งหมดสำหรับ Admin เท่านั้น ---
+    Route::middleware(HasRole::class . ':admin')
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        // ใช้ Full Namespace Path หรือ use statement ที่ถูกต้อง
+        Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/manage', [App\Http\Controllers\RepairRequestController::class, 'manage'])->name('manage'); // manage method ยังอยู่ที่ RepairRequestController
+         // VVVVVV เพิ่ม 2 บรรทัดนี้เข้าไปใน Admin Group VVVVVV
+            Route::get('/repair_requests/{repairRequest}/edit', [App\Http\Controllers\RepairRequestController::class, 'edit'])->name('repair_requests.edit');
+            Route::put('/repair_requests/{repairRequest}', [App\Http\Controllers\RepairRequestController::class, 'update'])->name('repair_requests.update');
+            // ^^^^^^ เพิ่ม 2 บรรทัดนี้เข้าไปใน Admin Group ^^^^^^
+
+        Route::resource('users', \App\Http\Controllers\UserController::class)->except(['show']); // UserController อาจจะอยู่ที่ root
+        Route::resource('locations', LocationController::class);
+        Route::resource('categories', CategoryController::class);
+        Route::resource('statuses', StatusController::class);
+    });
 });
 
 require __DIR__.'/auth.php';

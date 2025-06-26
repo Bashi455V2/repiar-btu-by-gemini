@@ -13,7 +13,12 @@ class CategoryController extends Controller
      */
     public function index()
     {
-        $categories = Category::orderBy('name')->paginate(10);
+        // VVVVVV แก้ไข/ตรวจสอบบรรทัดนี้ VVVVVV
+        $categories = Category::withCount('repairRequests') // <--- เพิ่ม withCount('repairRequests')
+                              ->orderBy('name')
+                              ->paginate(10);
+        // ^^^^^^ แก้ไข/ตรวจสอบบรรทัดนี้ ^^^^^^
+
         return view('admin.categories.index', compact('categories'));
     }
 
@@ -75,9 +80,8 @@ class CategoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Category $category)
+     public function destroy(Category $category)
     {
-        // เพิ่มการตรวจสอบก่อนลบ: หมวดหมู่นี้มีการใช้งานใน Repair Requests หรือไม่
         if ($category->repairRequests()->count() > 0) {
             return redirect()->route('admin.categories.index')
                              ->with('error', 'ไม่สามารถลบหมวดหมู่นี้ได้ เนื่องจากมีการใช้งานอยู่ในการแจ้งซ่อม');
@@ -86,4 +90,9 @@ class CategoryController extends Controller
         $category->delete();
         return redirect()->route('admin.categories.index')->with('status', 'หมวดหมู่ถูกลบเรียบร้อยแล้ว');
     }
+    // ใน app/Models/Category.php
+public function repairRequests()
+{
+    return $this->hasMany(RepairRequest::class, 'category_id');
+}
 }

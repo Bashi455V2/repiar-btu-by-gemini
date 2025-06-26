@@ -16,13 +16,16 @@ class RepairRequestPolicy
         return true; // ทุกคนที่ล็อกอินสามารถเรียกดูรายการได้ (การ filter ทำใน controller)
     }
 
-    public function view(User $user, RepairRequest $repairRequest): bool
-    {
-        if ($user->is_admin || $user->is_technician) {
-            return true;
-        }
-        return $user->id === $repairRequest->user_id;
+public function view(User $user, RepairRequest $repairRequest): bool
+{
+    if ($user->is_admin) {
+        return true;
     }
+    if ($user->is_technician) {
+        return $repairRequest->assigned_to_user_id === $user->id || is_null($repairRequest->assigned_to_user_id);
+    }
+    return $user->id === $repairRequest->user_id;
+}
 
     public function create(User $user): bool
     {

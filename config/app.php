@@ -6,7 +6,12 @@ use Illuminate\Support\ServiceProvider; // ตรวจสอบว่ามี 
 return [
     'name' => env('APP_NAME', 'Laravel'),
     // ... (ส่วนอื่นๆ เช่น env, debug, url, timezone, locale, key, maintenance) ...
-
+    'locale' => 'th',
+'fallback_locale' => 'th',
+'faker_locale' => 'th_TH', // สำหรับ Faker
+// config/app.php
+// config/app.php
+'timezone' => env('APP_TIMEZONE', 'Asia/Bangkok'), // Fallback เป็น Asia/Bangkok ถ้าใน .env ไม่มี
     'providers' => ServiceProvider::defaultProviders()->merge([
         /*
          * Laravel Framework Service Providers...

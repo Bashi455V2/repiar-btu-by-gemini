@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity; // <--- ตรวจสอบว่ามีการ use Trait นี้
+use Spatie\Activitylog\LogOptions;          // <--- Import LogOptions
 
 class RepairRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity; // <--- และมีการใช้ Trait นี้
 
     protected $fillable = [
         'user_id',
@@ -27,7 +29,7 @@ class RepairRequest extends Model
         'completed_at' => 'datetime',
     ];
 
-    // Relationships
+    // Relationships (user, location, category, status, assignedTo)
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -53,23 +55,50 @@ class RepairRequest extends Model
         return $this->belongsTo(User::class, 'assigned_to_user_id');
     }
 
-    /**
-     * Scope a query to eager load common details.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder  $query
-     * @return \Illuminate\Database\Eloquent\Builder
-     */
-    public function scopeWithDetails($query) // <--- มี scopeWithDetails() อันเดียวที่ถูกต้อง
+    public function scopeWithDetails($query)
     {
         return $query->with(['user', 'location', 'category', 'status', 'assignedTo']);
     }
 
-    /**
-     * Eager load common details for an existing model instance.
-     * (ถ้าคุณต้องการใช้งาน ให้ uncomment ส่วนนี้)
-     */
     public function loadDetails()
     {
         return $this->load(['user', 'location', 'category', 'status', 'assignedTo']);
     }
+
+    // VVVVVV เพิ่ม Method นี้เข้าไป VVVVVV
+    /**
+     * Configure the options for activity logging.
+     */
+public function getActivitylogOptions(): LogOptions
+{
+    return LogOptions::defaults()
+        ->logOnly([
+            'title',
+            'description',
+            'location_id',
+            'category_id',
+            'status_id', // <--- **สำคัญ: ตรวจสอบว่ามี field นี้**
+            'assigned_to_user_id', // หรือ assigned_to
+            'remarks_by_technician',
+            'completed_at'
+        ])
+        ->logOnlyDirty()
+        ->dontSubmitEmptyLogs()
+        ->setDescriptionForEvent(fn(string $eventName) => "รายการแจ้งซ่อม #{$this->id} ได้ถูก {$this->translateEventName($eventName)}")
+        ->useLogName('RepairRequest');
+}
+
+    // Helper function สำหรับแปลชื่อ event เป็นภาษาไทย (ทางเลือก)
+    public function translateEventName(string $eventName): string
+    {
+        if ($eventName === 'created') {
+            return 'สร้างใหม่';
+        } elseif ($eventName === 'updated') {
+            return 'อัปเดตข้อมูล';
+        } elseif ($eventName === 'deleted') {
+            return 'ลบ';
+        }
+        return $eventName;
+    }
+    // ^^^^^^ สิ้นสุดการเพิ่ม Method ^^^^^^
 }

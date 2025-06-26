@@ -12,6 +12,8 @@ class Status extends Model
     protected $fillable = [
         'name',
         'color_class', // สำหรับ UI
+        'color_class_tailwind', // สำหรับ Tailwind CSS
+        
     ];
 
     /**

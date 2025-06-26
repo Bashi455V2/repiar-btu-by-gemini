@@ -37,28 +37,50 @@
                                         <th scope="col" class="hidden sm:table-cell py-3.5 px-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-200">อาคาร</th>
                                         <th scope="col" class="hidden sm:table-cell py-3.5 px-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-200">ชั้น</th>
                                         <th scope="col" class="hidden md:table-cell py-3.5 px-3 text-left text-sm font-semibold text-slate-900 dark:text-slate-200">ห้อง</th>
-                                        <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6"><span class="sr-only">Actions</span></th>
+                                         {{-- VVVVVV เพิ่ม Header ใหม่ VVVVVV --}}
+        <th scope="col" class="py-3.5 px-3 text-center text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">จำนวนที่ใช้</th>
+        {{-- ^^^^^^ เพิ่ม Header ใหม่ ^^^^^^ --}}
+        <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6 text-center text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">ดำเนินการ</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
-                                    @foreach ($locations as $location)
-                                        <tr>
-                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 dark:text-slate-100 sm:pl-6">{{ $location->id }}</td>
-                                            <td class="whitespace-nowrap py-4 px-3 text-sm text-slate-600 dark:text-slate-300">{{ $location->name }}</td>
-                                            <td class="hidden sm:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $location->building ?? '-' }}</td>
-                                            <td class="hidden sm:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $location->floor ?? '-' }}</td>
-                                            <td class="hidden md:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $location->room_number ?? '-' }}</td>
-                                            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                <a href="{{ route('admin.locations.edit', $location) }}" class="text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300">แก้ไข</a>
-                                                <form action="{{ route('admin.locations.destroy', $location) }}" method="POST" class="inline-block ml-3" onsubmit="return confirm('คุณแน่ใจหรือไม่ที่จะลบสถานที่นี้?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">ลบ</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
+                                {{-- ใน resources/views/admin/locations/index.blade.php --}}
+<tbody class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
+    @foreach ($locations as $location)
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors duration-150">
+            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-slate-900 dark:text-slate-100 sm:pl-6">{{ $location->id }}</td>
+            <td class="whitespace-nowrap py-4 px-3 text-sm text-slate-600 dark:text-slate-300">{{ $location->name }}</td>
+            <td class="hidden sm:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $location->building ?? '-' }}</td>
+            <td class="hidden sm:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $location->floor ?? '-' }}</td>
+            <td class="hidden md:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $location->room_number ?? '-' }}</td>
+            {{-- VVVVVV เพิ่ม Cell ใหม่สำหรับแสดงจำนวน VVVVVV --}}
+            <td class="whitespace-nowrap py-4 px-3 text-sm text-center text-slate-500 dark:text-slate-400">
+                @if($location->repair_requests_count > 0)
+                    <span class="px-2.5 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-sky-100 text-sky-800 dark:bg-sky-700/50 dark:text-sky-300">
+                        {{ $location->repair_requests_count }} รายการ
+                    </span>
+                @else
+                    <span class="text-slate-400 dark:text-slate-500">-</span>
+                @endif
+            </td>
+            {{-- ^^^^^^ เพิ่ม Cell ใหม่สำหรับแสดงจำนวน ^^^^^^ --}}
+            <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-center text-sm font-medium sm:pr-6">
+                {{-- ... (ปุ่ม Actions แก้ไข/ลบ เหมือนเดิม) ... --}}
+                <div class="flex items-center justify-center space-x-2">
+                    <a href="{{ route('admin.locations.edit', $location) }}" class="text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300 p-1.5 rounded-full hover:bg-amber-100 dark:hover:bg-slate-700 transition-colors duration-150" title="แก้ไข">
+                        <i class="fas fa-edit fa-fw"></i>
+                    </a>
+                    <form action="{{ route('admin.locations.destroy', $location) }}" method="POST" class="inline-block" onsubmit="return confirm('คุณแน่ใจหรือไม่ที่จะลบสถานที่นี้? (ถ้ามีการใช้งานอยู่จะไม่สามารถลบได้)');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-slate-700 transition-colors duration-150 {{ $location->repair_requests_count > 0 ? 'opacity-50 cursor-not-allowed' : '' }}" title="ลบ" {{ $location->repair_requests_count > 0 ? 'disabled' : '' }}>
+                            <i class="fas fa-trash-alt fa-fw"></i>
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    @endforeach
+</tbody>
                             </table>
                         </div>
                         <div class="mt-6">

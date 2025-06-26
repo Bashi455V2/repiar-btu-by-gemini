@@ -31,7 +31,7 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::user();
 
         if ($user->is_admin) {
-            return redirect()->intended(route('dashboard')); // Admin ไป /dashboard
+            return redirect()->intended(route('admin.dashboard')); // Admin ไป /dashboard
         } elseif ($user->is_technician) {
             return redirect()->intended(route('repair_requests.index')); // Technician ไป /repair_requests
         } else { // User ทั่วไป
