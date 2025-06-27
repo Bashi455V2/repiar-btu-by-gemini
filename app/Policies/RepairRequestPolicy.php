@@ -17,16 +17,20 @@ class RepairRequestPolicy
     }
 
 public function view(User $user, RepairRequest $repairRequest): bool
-{
-    if ($user->is_admin) {
-        return true;
-    }
-    if ($user->is_technician) {
-        return $repairRequest->assigned_to_user_id === $user->id || is_null($repairRequest->assigned_to_user_id);
-    }
-    return $user->id === $repairRequest->user_id;
-}
+    {
+        if ($user->is_admin) {
+            return true; // แอดมินสามารถดูได้ทุกรายการ
+        }
 
+        if ($user->is_technician) {
+            return true; // **แก้ไขตรงนี้**: ช่างเทคนิคทุกคนสามารถดูรายการซ่อมได้ทั้งหมด (รวมถึงของช่างคนอื่น)
+        }
+
+        // ผู้ใช้ทั่วไปสามารถดูได้เฉพาะรายการที่ตัวเองแจ้งเท่านั้น
+        return $user->id === $repairRequest->user_id;
+    }
+
+    // (ส่วนนี้เหมือนเดิม - อนุญาตให้ update เฉพาะงานที่ถูกมอบหมายให้ตัวเอง หรือ Admin)
     public function create(User $user): bool
     {
         return true; // ทุกคนที่ล็อกอินสามารถสร้างได้
@@ -35,14 +39,15 @@ public function view(User $user, RepairRequest $repairRequest): bool
     public function update(User $user, RepairRequest $repairRequest): bool
     {
         if ($user->is_admin) {
-            return true;
+            return true; // แอดมินสามารถอัปเดตได้ทุกรายการ
         }
         if ($user->is_technician) {
-            // Technician อาจจะแก้ไขได้เฉพาะงานที่ assign ให้ตัวเอง หรือทั้งหมด
-            // หรืออาจจะแก้ไขได้แค่บาง field (ซึ่ง Policy นี้จะควบคุมแค่ "สามารถเริ่ม" update ได้หรือไม่)
+            // ช่างเทคนิคสามารถแก้ไขได้เฉพาะงานที่ถูกมอบหมายให้ตัวเองเท่านั้น
+            // หรือถ้าเป็นงานที่ยังไม่ได้มอบหมายก็อาจจะยังแก้ไขได้ (เช่น เปลี่ยนสถานะเบื้องต้น)
+            // แต่สำหรับงานที่ "ช่างคนอื่น" รับไปแล้ว จะไม่สามารถแก้ไขได้ตาม Policy นี้
             return $repairRequest->assigned_to_user_id === $user->id || is_null($repairRequest->assigned_to_user_id);
         }
-        // เจ้าของรายการ อาจจะแก้ไขได้เฉพาะตอนที่สถานะยังเป็น pending
+        // เจ้าของรายการ อาจจะแก้ไขได้เฉพาะตอนที่สถานะยังเป็น "รอดำเนินการ"
         return $user->id === $repairRequest->user_id && optional($repairRequest->status)->name === 'รอดำเนินการ';
     }
 
@@ -54,6 +59,12 @@ public function view(User $user, RepairRequest $repairRequest): bool
         // ตัวอย่าง: เจ้าของลบได้ถ้ายังเป็น pending
         // return $user->id === $repairRequest->user_id && optional($repairRequest->status)->name === 'รอดำเนินการ';
         return false; // หรือถ้าไม่ให้ User ทั่วไปลบ
+    }
+
+    public function claim(User $user, RepairRequest $repairRequest): bool
+    {
+        // อนุญาตให้ช่างรับงานได้ก็ต่อเมื่อยังไม่มีใครรับงานนั้น
+        return $user->is_technician && is_null($repairRequest->assigned_to_user_id);
     }
 
     // ... (method อื่นๆ เช่น manageRequests ถ้าคุณจะใช้ผ่าน Policy)

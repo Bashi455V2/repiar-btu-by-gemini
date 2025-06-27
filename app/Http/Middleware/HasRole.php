@@ -26,13 +26,13 @@ class HasRole
 
         // ตรวจสอบว่าผู้ใช้มีบทบาทใดบทบาทหนึ่งในรายการที่กำหนดหรือไม่
         foreach ($roles as $role) {
-            if ($role === 'admin' && $user->is_admin) {
-                return $next($request); // ถ้าเป็น Admin และมี is_admin = true
+            if ($role === 'admin' && $user->is_admin) { // เรียกใช้ is_admin โดยตรง
+                return $next($request);
             }
-            if ($role === 'technician' && $user->is_technician) {
-                return $next($request); // ถ้าเป็น Technician และมี is_technician = true
+            if ($role === 'technician' && $user->is_technician) { // เรียกใช้ is_technician โดยตรง
+                return $next($request);
             }
-            // สามารถเพิ่มบทบาทอื่นๆ ที่นี่ได้ในอนาคต
+            // สามารถเพิ่มบทบาทอื่นๆ ที่นี่ได้ในอนาคต เช่น if ($role === 'user' && $user->is_user) { ... }
         }
 
         // ถ้าผู้ใช้ไม่มีบทบาทที่ได้รับอนุญาต ให้แสดงหน้า 403 Forbidden หรือ Redirect

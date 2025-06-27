@@ -12,18 +12,19 @@ class RepairRequest extends Model
     use HasFactory, LogsActivity; // <--- และมีการใช้ Trait นี้
 
     protected $fillable = [
-        'user_id',
-        'title',
-        'description',
-        'location_id',
-        'category_id',
-        'status_id',
-        'requester_phone',
-        'image_path',
-        'assigned_to_user_id',
-        'remarks_by_technician',
-        'completed_at',
-    ];
+    'user_id',
+    'title',
+    'description',
+    'location_id',
+    'category_id',
+    'status_id',
+    'assigned_to_user_id',
+    'remarks_by_technician',
+    'requester_phone',
+    'image_path',
+    'after_image_path', // <--- ตรวจสอบว่ามีฟิลด์ใหม่นี้
+    'completed_at',
+];
 
     protected $casts = [
         'completed_at' => 'datetime',
@@ -80,7 +81,9 @@ public function getActivitylogOptions(): LogOptions
             'status_id', // <--- **สำคัญ: ตรวจสอบว่ามี field นี้**
             'assigned_to_user_id', // หรือ assigned_to
             'remarks_by_technician',
-            'completed_at'
+            'completed_at',
+              'image_path',         // <--- เพิ่มฟิลด์นี้
+            'after_image_path'
         ])
         ->logOnlyDirty()
         ->dontSubmitEmptyLogs()

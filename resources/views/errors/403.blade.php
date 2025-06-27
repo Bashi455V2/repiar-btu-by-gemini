@@ -38,7 +38,7 @@
                     if (Auth::user()->is_admin) {
                         $homeForUser = route('dashboard');
                     } elseif (Auth::user()->is_technician) {
-                        $homeForUser = route('repair_requests.manage');
+                        $homeForUser = route('technician.queue.index');
                     } else {
                         $homeForUser = route('profile.edit'); // หรือ route('repair_requests.index')
                     }

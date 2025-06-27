@@ -1,11 +1,11 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row justify-between items-center">
+        <div class="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
             <h2 class="font-semibold text-xl text-slate-800 dark:text-slate-200 leading-tight">
                 <i class="fas fa-tasks fa-fw mr-2 text-sky-600 dark:text-sky-500"></i>{{ __('หน้าจัดการแจ้งซ่อม') }}
             </h2>
             <a href="{{ route('repair_requests.create') }}"
-                class="inline-flex items-center px-4 py-2 bg-sky-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-sky-700 active:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition ease-in-out duration-150 shadow-md hover:shadow-lg">
+                class="inline-flex items-center px-4 py-2 bg-sky-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-sky-700 active:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition ease-in-out duration-150 shadow-md hover:shadow-lg w-full sm:w-auto justify-center">
                 <i class="fas fa-plus fa-fw mr-2"></i>{{ __('แจ้งซ่อมใหม่') }}
             </a>
         </div>
@@ -28,44 +28,69 @@
                     @endif
 
                     {{-- ================================================================ --}}
-                    {{-- START: เพิ่มส่วน Filter ตรงนี้ --}}
+                    {{-- START: Filter Section --}}
                     {{-- ================================================================ --}}
-                    <form method="GET" action="{{ route('admin.manage') }}" class="mb-6"> {{-- หรือ route ที่ถูกต้องสำหรับหน้านี้ --}}
-                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+                    <form method="GET" action="{{ route('admin.manage') }}" class="mb-6 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg shadow-inner">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+                            {{-- Filter โดยสถานะการมอบหมาย --}}
                             <div>
-                                <label for="assignment_status_filter" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">กรองตามการมอบหมาย:</label>
-                                <select name="assignment_status" id="assignment_status_filter" onchange="this.form.submit()"
+                                <label for="assignment_status_filter" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">สถานะการมอบหมาย:</label>
+                                <select name="assignment_status" id="assignment_status_filter"
                                         class="block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm dark:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-600 py-2 px-3">
-                                    @if(isset($assignmentStatuses)) {{-- ตรวจสอบว่าตัวแปรถูกส่งมา --}}
-                                        @foreach($assignmentStatuses as $key => $value)
-                                            <option value="{{ $key }}" {{ (isset($currentAssignmentFilter) && $currentAssignmentFilter == $key) ? 'selected' : '' }}>
-                                                {{ $value }}
-                                            </option>
-                                        @endforeach
-                                    @else
-                                        {{-- Fallback เผื่อตัวแปรไม่ได้ถูกส่งมา (ไม่ควรเกิดขึ้นถ้า Controller ถูกต้อง) --}}
-                                        <option value="all" {{ (request('assignment_status', 'all') == 'all') ? 'selected' : '' }}>งานทั้งหมด</option>
-                                        <option value="unassigned" {{ (request('assignment_status') == 'unassigned') ? 'selected' : '' }}>งานที่ยังไม่ได้มอบหมาย</option>
-                                        <option value="assigned" {{ (request('assignment_status') == 'assigned') ? 'selected' : '' }}>งานที่มอบหมายแล้ว</option>
-                                    @endif
+                                    <option value="all" {{ (request('assignment_status', 'all') == 'all') ? 'selected' : '' }}>งานทั้งหมด</option>
+                                    <option value="unassigned" {{ (request('assignment_status') == 'unassigned') ? 'selected' : '' }}>งานที่ยังไม่ได้มอบหมาย</option>
+                                    <option value="assigned" {{ (request('assignment_status') == 'assigned') ? 'selected' : '' }}>งานที่มอบหมายแล้ว</option>
                                 </select>
                             </div>
-                            {{-- หากมี Filter อื่นๆ สามารถเพิ่ม col ใหม่ใน grid นี้ได้ --}}
-                            {{-- ตัวอย่าง:
+
+                            {{-- Filter โดยสถานะการแจ้งซ่อม --}}
                             <div>
-                                <label for="status_filter" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">กรองตามสถานะ:</label>
-                                <select name="status_id" id="status_filter" onchange="this.form.submit()" class="block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm dark:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-600 py-2 px-3">
-                                    <option value="">สถานะทั้งหมด</option>
+                                <label for="status_filter" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">สถานะการแจ้งซ่อม:</label>
+                                <select name="status_id" id="status_filter"
+                                        class="block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm dark:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-600 py-2 px-3">
+                                    <option value="">ทั้งหมด</option>
                                     @foreach($statuses as $status)
-                                        <option value="{{ $status->id }}" {{ request('status_id') == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                                        <option value="{{ $status->id }}" {{ (string)request('status_id') === (string)$status->id ? 'selected' : '' }}>{{ $status->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
-                            --}}
+
+                            {{-- Filter โดยช่างที่รับผิดชอบ --}}
+                            <div>
+                                <label for="technician_filter" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ช่างที่รับผิดชอบ:</label>
+                                <select name="assigned_to_user_id" id="technician_filter"
+                                        class="block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm dark:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-600 py-2 px-3">
+                                    <option value="">ทั้งหมด</option>
+                                    <option value="unassigned_tech" {{ (string)request('assigned_to_user_id') === 'unassigned_tech' ? 'selected' : '' }}>ยังไม่ได้มอบหมายช่าง</option>
+                                    @foreach($technicians as $tech)
+                                        <option value="{{ $tech->id }}" {{ (string)request('assigned_to_user_id') === (string)$tech->id ? 'selected' : '' }}>{{ $tech->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Search input --}}
+                            <div class="md:col-span-1 lg:col-span-1">
+                                <label for="search_query" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ค้นหา (ชื่อเรื่อง/รหัส):</label>
+                                <input type="text" name="search_query" id="search_query" value="{{ request('search_query') }}"
+                                       placeholder="รหัส หรือ ชื่อเรื่อง..."
+                                       class="block w-full rounded-md border-slate-300 dark:border-slate-600 shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:text-sm dark:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-600 py-2 px-3">
+                            </div>
+
+                            {{-- Action Buttons --}}
+                            <div class="sm:col-span-2 md:col-span-3 lg:col-span-4 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-2 sm:mt-0">
+                                <button type="submit"
+                                        class="inline-flex items-center justify-center px-4 py-2 bg-sky-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-sky-700 active:bg-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition ease-in-out duration-150 shadow-md flex-grow sm:flex-grow-0">
+                                    <i class="fas fa-filter fa-fw mr-2"></i>{{ __('กรองข้อมูล') }}
+                                </button>
+                                <a href="{{ route('admin.manage') }}"
+                                   class="inline-flex items-center justify-center px-4 py-2 bg-slate-200 border border-slate-300 rounded-lg font-semibold text-xs text-slate-700 uppercase tracking-widest hover:bg-slate-300 active:bg-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-600 dark:active:bg-slate-500 dark:focus:ring-offset-slate-800 transition ease-in-out duration-150 shadow-md flex-grow sm:flex-grow-0">
+                                    <i class="fas fa-redo fa-fw mr-2"></i>{{ __('รีเซ็ต') }}
+                                </a>
+                            </div>
                         </div>
                     </form>
                     {{-- ================================================================ --}}
-                    {{-- END: ส่วน Filter --}}
+                    {{-- END: Filter Section --}}
                     {{-- ================================================================ --}}
 
                     @if ($repairRequests->isEmpty())
@@ -75,7 +100,12 @@
                             </svg>
                             <h3 class="mt-2 text-sm font-medium text-slate-900 dark:text-slate-200">ไม่พบรายการแจ้งซ่อม</h3>
                             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                @if(request()->has('assignment_status') && request('assignment_status') !== 'all')
+                                @if(request()->hasAny(['assignment_status', 'status_id', 'assigned_to_user_id', 'search_query']) &&
+                                    (request('assignment_status', 'all') !== 'all' ||
+                                     request('status_id') !== null ||
+                                     request('assigned_to_user_id') !== null ||
+                                     request('search_query') !== null)
+                                )
                                     ลองเปลี่ยนตัวเลือกการกรอง หรือ
                                 @endif
                                 เริ่มต้นด้วยการแจ้งซ่อมใหม่
@@ -90,18 +120,17 @@
                     @else
                         {{-- ส่วนแสดงผลสำหรับหน้าจอขนาดกลางขึ้นไป (ตาราง) --}}
                         <div class="hidden md:block overflow-x-auto align-middle min-w-full mt-2">
-                            {{-- โค้ดตารางของคุณ --}}
-                            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <table class="min-w-full table-auto divide-y divide-slate-200 dark:divide-slate-700">
                                 <thead class="bg-slate-100 dark:bg-slate-700/50">
                                     <tr>
-                                        <th class="py-3.5 pl-4 pr-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider sm:pl-6">ID</th>
-                                        <th class="py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">เรื่อง</th>
-                                        <th class="hidden lg:table-cell py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">ผู้แจ้ง</th>
-                                        <th class="py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">สถานะ</th>
-                                        <th class="hidden xl:table-cell py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">มอบหมายให้</th>
-                                        <th class="hidden sm:table-cell py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">วันที่แจ้ง</th>
-                                        <th class="py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 min-w-[280px] lg:min-w-[320px]">อัปเดตด่วน</th>
-                                        <th class="relative py-3.5 pl-3 pr-4 sm:pr-6 text-center text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">ดำเนินการ</th>
+                                        <th class="py-3.5 pl-4 pr-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider sm:pl-6 w-[80px]">ID</th>
+                                        <th class="py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[150px] lg:min-w-[200px]">เรื่อง</th>
+                                        <th class="hidden lg:table-cell py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[120px]">ผู้แจ้ง</th>
+                                        <th class="py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-[120px]">สถานะ</th>
+                                        <th class="hidden xl:table-cell py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-[120px]">มอบหมายให้</th>
+                                        <th class="hidden sm:table-cell py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider w-[120px]">วันที่แจ้ง</th>
+                                        <th class="py-3.5 px-3 text-left text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 min-w-[240px] lg:min-w-[280px]">อัปเดตด่วน</th>
+                                        <th class="relative py-3.5 pl-3 pr-4 sm:pr-6 text-center text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[180px]">ดำเนินการ</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
@@ -121,11 +150,11 @@
                                             </td>
                                             <td class="hidden xl:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $item->assignedTo->name ?? '-' }}</td>
                                             <td class="hidden sm:table-cell whitespace-nowrap py-4 px-3 text-sm text-slate-500 dark:text-slate-400">{{ $item->created_at->translatedFormat('j M Y') }}</td>
-                                            <td class="py-3 px-3 text-sm align-middle">
+                                            <td class="py-3 px-3 text-sm align-top"> {{-- align-top เพื่อให้ฟอร์มในคอลัมน์ไม่ถูกบีบ --}}
                                                 @include('repair_requests.partials.manage-update-form', ['item' => $item, 'statuses' => $statuses, 'technicians' => $technicians, 'formIdSuffix' => '_desktop'])
                                             </td>
                                             <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-center text-sm font-medium sm:pr-6 align-middle">
-                                                 @include('repair_requests.partials.manage-action-buttons', ['item' => $item])
+                                                @include('repair_requests.partials.manage-action-buttons', ['item' => $item])
                                             </td>
                                         </tr>
                                     @endforeach
@@ -137,8 +166,8 @@
                         <div class="block md:hidden mt-4 space-y-4">
                             @foreach ($repairRequests as $item)
                                 <div class="bg-white dark:bg-slate-700/50 shadow-lg rounded-lg p-4 border border-slate-200 dark:border-slate-600">
-                                    <div class="flex justify-between items-start mb-3">
-                                        <a href="{{ route('repair_requests.show', $item) }}" class="block flex-1 mr-2">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 space-y-2 sm:space-y-0">
+                                        <a href="{{ route('repair_requests.show', $item) }}" class="block flex-1 sm:mr-2">
                                             <h4 class="text-base font-semibold text-sky-600 dark:text-sky-400 hover:underline leading-tight">{{ $item->title }}</h4>
                                             <p class="text-xs text-slate-500 dark:text-slate-400">ID: {{ $item->id }} | โดย: {{ $item->user->name ?? ($item->requester_name ?? 'N/A') }}</p>
                                         </a>
@@ -146,10 +175,10 @@
                                             {{ $item->status->name ?? 'N/A' }}
                                         </span>
                                     </div>
-                                    <div class="space-y-1 text-xs text-slate-600 dark:text-slate-300 mb-4">
-                                        <p><i class="fas fa-map-marker-alt fa-fw mr-1 text-slate-400"></i><strong class="font-medium text-slate-700 dark:text-slate-200">สถานที่:</strong> {{ Str::limit(optional($item->location)->name, 35) ?? 'N/A' }}</p>
-                                        <p><i class="fas fa-user-shield fa-fw mr-1 text-slate-400"></i><strong class="font-medium text-slate-700 dark:text-slate-200">มอบหมายให้:</strong> {{ optional($item->assignedTo)->name ?? 'ยังไม่ได้มอบหมาย' }}</p>
-                                        <p><i class="far fa-calendar-alt fa-fw mr-1 text-slate-400"></i><strong class="font-medium text-slate-700 dark:text-slate-200">วันที่แจ้ง:</strong> {{ $item->created_at->translatedFormat('j M Y') }}</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-1 text-sm text-slate-600 dark:text-slate-300 mb-4">
+                                        <p><i class="fas fa-map-marker-alt fa-fw mr-2 text-slate-400"></i><strong class="font-medium text-slate-700 dark:text-slate-200">สถานที่:</strong> {{ Str::limit(optional($item->location)->name, 35) ?? 'N/A' }}</p>
+                                        <p><i class="fas fa-user-shield fa-fw mr-2 text-slate-400"></i><strong class="font-medium text-slate-700 dark:text-slate-200">มอบหมายให้:</strong> {{ optional($item->assignedTo)->name ?? 'ยังไม่ได้มอบหมาย' }}</p>
+                                        <p class="col-span-1 sm:col-span-2"><i class="far fa-calendar-alt fa-fw mr-2 text-slate-400"></i><strong class="font-medium text-slate-700 dark:text-slate-200">วันที่แจ้ง:</strong> {{ $item->created_at->translatedFormat('j M Y, H:i') }}</p>
                                     </div>
 
                                     @include('repair_requests.partials.manage-update-form', ['item' => $item, 'statuses' => $statuses, 'technicians' => $technicians, 'formIdSuffix' => '_mobile'])
@@ -171,3 +200,37 @@
         </div>
     </div>
 </x-app-layout>
+
+<style>
+    /* Custom style for truncate with title on hover */
+    .truncate-with-title {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterForm = document.querySelector('form[action="{{ route('admin.manage') }}"]');
+        const selectElements = filterForm.querySelectorAll('select');
+        const searchInput = filterForm.querySelector('input[name="search_query"]');
+
+        // ฟังก์ชัน submit ฟอร์มเมื่อมีการเปลี่ยนแปลง
+        selectElements.forEach(select => {
+            select.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+
+        // ทำให้กด Enter ในช่องค้นหาแล้ว submit ได้
+        if (searchInput) {
+            searchInput.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault(); // ป้องกันการ submit ซ้ำ
+                    filterForm.submit();
+                }
+            });
+        }
+    });
+</script>

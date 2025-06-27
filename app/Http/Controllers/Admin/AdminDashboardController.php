@@ -11,7 +11,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
-class DashboardController extends Controller
+class AdminDashboardController extends Controller
 {
     
     public function index(Request $request)

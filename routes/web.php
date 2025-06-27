@@ -1,19 +1,17 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\HasRole;
+
+// Controllers
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RepairRequestController;
-use Illuminate\Support\Facades\Route;
-
-// --- Controllers ---
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\Admin\AdminDashboardController; // แนะนำให้สร้าง Controller แยกสำหรับ Admin Dashboard เพื่อความชัดเจน
-use App\Http\Controllers\Admin\StatusController;
-use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\CategoryController;
-
-// --- Middleware ---
-use App\Http\Middleware\HasRole;
+use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\StatusController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,15 +24,11 @@ Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
 
-
 // --- Route หลักหลังการ Login (สำหรับ RouteServiceProvider::HOME) ---
-// Route นี้ควรเป็นจุดเริ่มต้นกลางสำหรับผู้ใช้ทุกคนหลัง Login
 // Controller จะทำหน้าที่ตรวจสอบ Role และ Redirect ไปยังหน้าที่เหมาะสม
-// จึงไม่ควรมี Middleware HasRole:admin ที่นี่
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
-
 
 // --- Group Route ทั้งหมดที่ต้องมีการล็อกอิน ---
 Route::middleware('auth')->group(function () {
@@ -44,35 +38,33 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Route สำหรับการอัปเดตสถานะ/มอบหมายงาน (ใช้โดย Admin/Technician)
-    Route::put('/repair_requests/{repairRequest}/update_status_assign', [RepairRequestController::class, 'updateStatusAndAssign'])
-        ->middleware(HasRole::class . ':admin,technician')
-        ->name('repair_requests.update_status_assign');
+    // --- Technician Routes ---
+    Route::middleware(HasRole::class . ':technician')->prefix('technician')->name('technician.')->group(function () {
+        Route::get('/tasks', [RepairRequestController::class, 'technicianTasks'])->name('tasks.index');
+        Route::get('/queue', [RepairRequestController::class, 'technicianQueue'])->name('queue.index');
+    });
 
-    // Resource Controller สำหรับ Repair Requests
-    // จะจัดการ Route: index, create, store, show, edit, update, destroy
-    // index จะถูกใช้โดย User ทั่วไป และ Technician
-    Route::resource('repair_requests', RepairRequestController::class);
-
-
-    // --- Admin Group: Routes ทั้งหมดสำหรับ Admin เท่านั้น ---
-    Route::middleware(HasRole::class . ':admin')
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
-        // ใช้ Full Namespace Path หรือ use statement ที่ถูกต้อง
-        Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
-        Route::get('/manage', [App\Http\Controllers\RepairRequestController::class, 'manage'])->name('manage'); // manage method ยังอยู่ที่ RepairRequestController
-         // VVVVVV เพิ่ม 2 บรรทัดนี้เข้าไปใน Admin Group VVVVVV
-            Route::get('/repair_requests/{repairRequest}/edit', [App\Http\Controllers\RepairRequestController::class, 'edit'])->name('repair_requests.edit');
-            Route::put('/repair_requests/{repairRequest}', [App\Http\Controllers\RepairRequestController::class, 'update'])->name('repair_requests.update');
-            // ^^^^^^ เพิ่ม 2 บรรทัดนี้เข้าไปใน Admin Group ^^^^^^
-
-        Route::resource('users', \App\Http\Controllers\UserController::class)->except(['show']); // UserController อาจจะอยู่ที่ root
+    // --- Admin Group ---
+    Route::middleware(HasRole::class . ':admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/manage', [RepairRequestController::class, 'manage'])->name('manage');
+        Route::get('/repair_requests/{repairRequest}/edit', [RepairRequestController::class, 'edit'])->name('repair_requests.edit');
+        Route::put('/repair_requests/{repairRequest}', [RepairRequestController::class, 'update'])->name('repair_requests.update');
+        
+        // Master Data Management
+        Route::resource('users', UserController::class)->except(['show']);
         Route::resource('locations', LocationController::class);
         Route::resource('categories', CategoryController::class);
         Route::resource('statuses', StatusController::class);
     });
+        
+    // --- Shared Actions & General User Routes ---
+    Route::put('/repair_requests/{repairRequest}/update_status_assign', [RepairRequestController::class, 'updateStatusAndAssign'])->middleware(HasRole::class . ':admin,technician')->name('repair_requests.update_status_assign');
+    Route::patch('/repair_requests/{repairRequest}/claim', [RepairRequestController::class, 'claim'])->middleware(HasRole::class . ':technician')->name('repair_requests.claim');
+
+    // Route::resource สำหรับ Repair Requests จะจัดการส่วนที่เหลือ (create, store, show, destroy)
+    Route::resource('repair_requests', RepairRequestController::class);
+
 });
 
 require __DIR__.'/auth.php';
